@@ -86,6 +86,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static io.foojay.api.discoclient.util.Constants.RESPONSE_RESULT;
 import static java.util.stream.Collectors.toSet;
 
 
@@ -120,7 +121,7 @@ public class DiscoClient {
     public Queue<Pkg> getAllPackages() {
         if (cacheReady.get()) { return pkgCache; }
 
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.PACKAGES_PATH)
                                                         .append("?release_status=ea")
                                                         .append("&release_status=ga");
@@ -154,7 +155,7 @@ public class DiscoClient {
             future.complete(pkgCache);
             return future;
         }
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.PACKAGES_PATH)
                                                         .append("?release_status=ea")
                                                         .append("&release_status=ga");
@@ -182,7 +183,7 @@ public class DiscoClient {
                              final LibCType libcType, final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                              final Boolean javafxBundled, final Boolean directlyDownloadable, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final Scope scope) {
 
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.PACKAGES_PATH);
         final int initialLength = queryBuilder.length();
 
@@ -305,14 +306,16 @@ public class DiscoClient {
         List<Pkg>   pkgsFound = new ArrayList<>();
         Gson        gson      = new Gson();
         JsonElement element   = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject pkgJsonObj = jsonArray.get(i).getAsJsonObject();
-                pkgsFound.add(new Pkg(pkgJsonObj.toString()));
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject pkgJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    pkgsFound.add(new Pkg(pkgJsonObj.toString()));
+                }
             }
         }
-
         pkgs.addAll(pkgsFound);
         HashSet<Pkg> unique = new HashSet<>(pkgs);
         pkgs = new LinkedList<>(unique);
@@ -323,7 +326,7 @@ public class DiscoClient {
                                                      final LibCType libCType, final Architecture architecture, final Bitness bitness, final ArchiveType archiveType, final PackageType packageType,
                                                      final Boolean javafxBundled, final Boolean directlyDownloadable, final ReleaseStatus releaseStatus, final TermOfSupport termOfSupport, final Scope scope) {
 
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.PACKAGES_PATH);
         final int initialLength = queryBuilder.length();
 
@@ -441,17 +444,19 @@ public class DiscoClient {
                                              Scope.NONE           == scopeCache           ? new ArrayList<>() : List.of(scopeCache)));
             return future;
         }
-
         return Helper.getAsync(query).thenApply(bodyText -> {
             List<Pkg>   pkgs      = new LinkedList<>();
             List<Pkg>   pkgsFound = new ArrayList<>();
             Gson        gson      = new Gson();
             JsonElement element   = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject pkgJsonObj = jsonArray.get(i).getAsJsonObject();
-                    pkgsFound.add(new Pkg(pkgJsonObj.toString()));
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject pkgJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        pkgsFound.add(new Pkg(pkgJsonObj.toString()));
+                    }
                 }
             }
             pkgs.addAll(pkgsFound);
@@ -475,7 +480,7 @@ public class DiscoClient {
 
 
     public final MajorVersion getMajorVersion(final String parameter) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH);
         if (null != parameter || !parameter.isEmpty()) {
             queryBuilder.append("/").append(parameter);
@@ -490,15 +495,20 @@ public class DiscoClient {
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
         if (element instanceof JsonObject) {
-            JsonObject    json         = element.getAsJsonObject();
-            MajorVersion  majorVersion = new MajorVersion(json.toString());
-            return majorVersion;
-        } else {
-            return null;
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    MajorVersion majorVersion = new MajorVersion(majorVersionJsonObj.toString());
+                    return majorVersion;
+                }
+            }
         }
+        return null;
     }
     public final CompletableFuture<MajorVersion> getMajorVersionAsync(final String parameter) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH);
         if (null != parameter || !parameter.isEmpty()) {
             queryBuilder.append("/").append(parameter);
@@ -513,19 +523,24 @@ public class DiscoClient {
             Gson        gson     = new Gson();
             JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
             if (element instanceof JsonObject) {
-                JsonObject    json         = element.getAsJsonObject();
-                MajorVersion  majorVersion = new MajorVersion(json.toString());
-                return majorVersion;
-            } else {
-                return null;
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        MajorVersion majorVersion = new MajorVersion(majorVersionJsonObj.toString());
+                        return majorVersion;
+                    }
+                }
             }
+            return null;
         });
     }
 
 
     public final Queue<MajorVersion> getAllMajorVersions() { return getAllMajorVersions(false); }
     public final Queue<MajorVersion> getAllMajorVersions(final boolean include_ea) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH)
                                                         .append("?ea=")
                                                         .append(include_ea);
@@ -536,17 +551,20 @@ public class DiscoClient {
 
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject majorVersionJsonObj = jsonArray.get(i).getAsJsonObject();
-                majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+                }
             }
         }
         return majorVersionsFound;
     }
     public final List<MajorVersion> getAllMajorVersions(final Optional<Boolean> maintained, final Optional<Boolean> includingEA, final Optional<Boolean> includingGA) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH);
         int initialLength = queryBuilder.length();
         if (null != maintained && maintained.isPresent()) {
@@ -568,11 +586,14 @@ public class DiscoClient {
 
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject majorVersionJsonObj = jsonArray.get(i).getAsJsonObject();
-                majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+                }
             }
         }
         return majorVersionsFound;
@@ -581,7 +602,7 @@ public class DiscoClient {
 
     public final CompletableFuture<List<MajorVersion>> getAllMajorVersionsAsync() { return getAllMajorVersionsAsync(false); }
     public final CompletableFuture<List<MajorVersion>> getAllMajorVersionsAsync(final boolean include_ea) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH)
                                                         .append("?ea=")
                                                         .append(include_ea);
@@ -590,18 +611,21 @@ public class DiscoClient {
             List<MajorVersion> majorVersionsFound = new CopyOnWriteArrayList<>();
             Gson        gson     = new Gson();
             JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject majorVersionJsonObj = jsonArray.get(i).getAsJsonObject();
-                    majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+                    }
                 }
             }
             return majorVersionsFound;
         });
     }
     public final CompletableFuture<List<MajorVersion>> getAllMajorVersionsAsync(final Optional<Boolean> maintained, final Optional<Boolean> includingEA, final Optional<Boolean> includingGA) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH);
         int initialLength = queryBuilder.length();
         if (null != maintained && maintained.isPresent()) {
@@ -622,11 +646,14 @@ public class DiscoClient {
             List<MajorVersion> majorVersionsFound = new ArrayList<>();
             Gson        gson     = new Gson();
             JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject majorVersionJsonObj = jsonArray.get(i).getAsJsonObject();
-                    majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+                    }
                 }
             }
             return majorVersionsFound;
@@ -635,7 +662,7 @@ public class DiscoClient {
 
 
     public final MajorVersion getMajorVersion(final int featureVersion, final boolean include_ea) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH)
                                                         .append("?include_ea=")
                                                         .append(include_ea);
@@ -645,22 +672,23 @@ public class DiscoClient {
 
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject   json         = jsonArray.get(i).getAsJsonObject();
-                MajorVersion majorVersion = new MajorVersion(json.toString());
-                if (majorVersion.getAsInt() == featureVersion) {
-                    return majorVersion;
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    MajorVersion majorVersion = new MajorVersion(majorVersionJsonObj.toString());
+                    if (majorVersion.getAsInt() == featureVersion) {
+                        return majorVersion;
+                    }
                 }
             }
-            return null;
-        } else {
-            return null;
         }
+        return null;
     }
     public final CompletableFuture<MajorVersion> getMajorVersionAsync(final int featureVersion, final boolean include_ea) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH)
                                                         .append("?include_ea=")
                                                         .append(include_ea);
@@ -669,19 +697,20 @@ public class DiscoClient {
         return Helper.getAsync(query).thenApply(bodyText -> {
             Gson        gson     = new Gson();
             JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject   json         = jsonArray.get(i).getAsJsonObject();
-                    MajorVersion majorVersion = new MajorVersion(json.toString());
-                    if (majorVersion.getAsInt() == featureVersion) {
-                        return majorVersion;
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        MajorVersion majorVersion = new MajorVersion(majorVersionJsonObj.toString());
+                        if (majorVersion.getAsInt() == featureVersion) {
+                            return majorVersion;
+                        }
                     }
                 }
-                return null;
-            } else {
-                return null;
             }
+            return null;
         });
     }
 
@@ -690,9 +719,8 @@ public class DiscoClient {
         MajorVersion majorVersion = getMajorVersion(parameter);
         if (null == majorVersion) {
             return new StringBuilder().append("{").append("\n")
-                                      .append("  \"value\"").append(":").append("\"").append(majorVersion).append("\"").append(",").append("\n")
-                                      .append("  \"detail\"").append(":").append("\"Requested release has wrong format or is null.\"").append(",").append("\n")
-                                      .append("  \"supported\"").append(":").append("\"1 - next early access").append(",current, last, latest, next, prev, last_lts, latest_lts, last_mts, latest_mts, last_sts, latest_mts, next_lts, next_mts, next_sts\"").append("\n")
+                                      .append("  \"result\"").append(":").append("\"").append("[]").append(",").append("\n")
+                                      .append("  \"message\"").append(":").append("\"Requested major version has wrong format or is null.\"").append("\n")
                                       .append("}")
                                       .toString();
         } else {
@@ -703,9 +731,8 @@ public class DiscoClient {
         return getMajorVersionAsync(parameter).thenApply(majorVersion -> {
             if (null == majorVersion) {
                 return new StringBuilder().append("{").append("\n")
-                                          .append("  \"value\"").append(":").append("\"").append(majorVersion).append("\"").append(",").append("\n")
-                                          .append("  \"detail\"").append(":").append("\"Requested release has wrong format or is null.\"").append(",").append("\n")
-                                          .append("  \"supported\"").append(":").append("\"1 - next early access").append(",current, last, latest, next, prev, last_lts, latest_lts, last_mts, latest_mts, last_sts, latest_mts, next_lts, next_mts, next_sts\"").append("\n")
+                                          .append("  \"result\"").append(":").append("\"").append("[]").append(",").append("\n")
+                                          .append("  \"message\"").append(":").append("\"Requested major version has wrong format or is null.\"").append("\n")
                                           .append("}")
                                           .toString();
             } else {
@@ -717,7 +744,7 @@ public class DiscoClient {
 
     public final List<MajorVersion> getMaintainedMajorVersions() { return getMaintainedMajorVersions(false); }
     public final List<MajorVersion> getMaintainedMajorVersions(final boolean include_ea) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH)
                                                         .append("?maintained=true&ga=true")
                                                         .append(include_ea ? "&ea=true" : "")
@@ -729,11 +756,14 @@ public class DiscoClient {
 
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject majorVersionJsonObj = jsonArray.get(i).getAsJsonObject();
-                majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+                }
             }
         }
         return majorVersionsFound;
@@ -742,7 +772,7 @@ public class DiscoClient {
 
     public final CompletableFuture<List<MajorVersion>> getMaintainedMajorVersionsAsync() { return getMaintainedMajorVersionsAsync(false); }
     public final CompletableFuture<List<MajorVersion>> getMaintainedMajorVersionsAsync(final boolean include_ea) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH)
                                                         .append("?maintained=true&ga=true")
                                                         .append(include_ea ? "&ea=true" : "")
@@ -754,11 +784,14 @@ public class DiscoClient {
 
             Gson        gson     = new Gson();
             JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject majorVersionJsonObj = jsonArray.get(i).getAsJsonObject();
-                    majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+                    }
                 }
             }
             return majorVersionsFound;
@@ -767,7 +800,7 @@ public class DiscoClient {
 
 
     public final List<MajorVersion> getUsefulMajorVersions() {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH)
                                                         .append("/useful");
 
@@ -777,11 +810,14 @@ public class DiscoClient {
 
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject majorVersionJsonObj = jsonArray.get(i).getAsJsonObject();
-                majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+                }
             }
         }
         return majorVersionsFound;
@@ -789,7 +825,7 @@ public class DiscoClient {
 
 
     public final CompletableFuture<List<MajorVersion>> getUsefulMajorVersionsAsync() {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.MAJOR_VERSIONS_PATH)
                                                         .append("/useful");
 
@@ -799,11 +835,14 @@ public class DiscoClient {
 
             Gson        gson     = new Gson();
             JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject majorVersionJsonObj = jsonArray.get(i).getAsJsonObject();
-                    majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject majorVersionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        majorVersionsFound.add(new MajorVersion(majorVersionJsonObj.toString()));
+                    }
                 }
             }
             return majorVersionsFound;
@@ -857,6 +896,39 @@ public class DiscoClient {
     }
 
 
+    public final List<Pkg> updateAvailableFor(final Distribution distribution, final SemVer semVer, final Architecture architecture, final Boolean javafxBundled) {
+        List<Pkg> pkgs = getPkgs(distribution, semVer.getVersionNumber(), Latest.OVERALL, getOperatingSystem(), LibCType.NONE, architecture, Bitness.NONE, ArchiveType.NONE, PackageType.JDK, javafxBundled,
+                                 Boolean.TRUE, semVer.getReleaseStatus(), TermOfSupport.NONE, Scope.PUBLIC);
+        List<Pkg> updatesFound = new ArrayList<>();
+        if (pkgs.isEmpty()) {
+            return updatesFound;
+        } else {
+            Pkg firstEntry = pkgs.get(0);
+            SemVer semVerFound = firstEntry.getJavaVersion();
+            if (semVerFound.compareTo(semVer) > 0) {
+                updatesFound = pkgs.stream().filter(pkg -> pkg.getJavaVersion().compareTo(semVerFound) == 0).collect(Collectors.toList());
+            }
+            return updatesFound;
+        }
+    }
+    public final CompletableFuture<List<Pkg>> updateAvailableForAsync(final Distribution distribution, final SemVer semVer, final Architecture architecture, final Boolean javafxBundled) {
+        return getPkgsAsync(distribution, semVer.getVersionNumber(), Latest.OVERALL, getOperatingSystem(), LibCType.NONE, architecture, Bitness.NONE, ArchiveType.NONE, PackageType.JDK, javafxBundled,
+                            Boolean.TRUE, semVer.getReleaseStatus(), TermOfSupport.NONE, Scope.PUBLIC).thenApply(pkgs -> {
+            List<Pkg> updatesFound = new ArrayList<>();
+            if (pkgs.isEmpty()) {
+                return updatesFound;
+            } else {
+                Pkg firstEntry = pkgs.get(0);
+                SemVer semVerFound = firstEntry.getJavaVersion();
+                if (semVerFound.compareTo(semVer) > 0) {
+                    updatesFound = pkgs.stream().filter(pkg -> pkg.getJavaVersion().compareTo(semVerFound) == 0).collect(Collectors.toList());
+                }
+                return updatesFound;
+            }
+        });
+    }
+
+
     public final List<Distribution> getDistributionsThatSupportVersion(final String version) {
         SemVer semver = SemVer.fromText(version).getSemVer1();
         if (null == semver) {
@@ -906,41 +978,8 @@ public class DiscoClient {
     }
 
 
-    public final List<Pkg> updateAvailableFor(final Distribution distribution, final SemVer semVer, final Architecture architecture, final Boolean javafxBundled) {
-        List<Pkg> pkgs = getPkgs(distribution, semVer.getVersionNumber(), Latest.OVERALL, getOperatingSystem(), LibCType.NONE, architecture, Bitness.NONE, ArchiveType.NONE, PackageType.JDK, javafxBundled,
-                                 Boolean.TRUE, semVer.getReleaseStatus(), TermOfSupport.NONE, Scope.PUBLIC);
-        List<Pkg> updatesFound = new ArrayList<>();
-        if (pkgs.isEmpty()) {
-            return updatesFound;
-        } else {
-            Pkg firstEntry = pkgs.get(0);
-            SemVer semVerFound = firstEntry.getJavaVersion();
-            if (semVerFound.compareTo(semVer) > 0) {
-                updatesFound = pkgs.stream().filter(pkg -> pkg.getJavaVersion().compareTo(semVerFound) == 0).collect(Collectors.toList());
-            }
-            return updatesFound;
-        }
-    }
-    public final CompletableFuture<List<Pkg>> updateAvailableForAsync(final Distribution distribution, final SemVer semVer, final Architecture architecture, final Boolean javafxBundled) {
-        return getPkgsAsync(distribution, semVer.getVersionNumber(), Latest.OVERALL, getOperatingSystem(), LibCType.NONE, architecture, Bitness.NONE, ArchiveType.NONE, PackageType.JDK, javafxBundled,
-                            Boolean.TRUE, semVer.getReleaseStatus(), TermOfSupport.NONE, Scope.PUBLIC).thenApply(pkgs -> {
-            List<Pkg> updatesFound = new ArrayList<>();
-            if (pkgs.isEmpty()) {
-                return updatesFound;
-            } else {
-                Pkg firstEntry = pkgs.get(0);
-                SemVer semVerFound = firstEntry.getJavaVersion();
-                if (semVerFound.compareTo(semVer) > 0) {
-                    updatesFound = pkgs.stream().filter(pkg -> pkg.getJavaVersion().compareTo(semVerFound) == 0).collect(Collectors.toList());
-                }
-                return updatesFound;
-            }
-        });
-    }
-
-
     public final List<Distribution> getDistributions() {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.DISTRIBUTIONS_PATH);
 
         String             query              = queryBuilder.toString();
@@ -949,30 +988,36 @@ public class DiscoClient {
 
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject distributionJsonObj = jsonArray.get(i).getAsJsonObject();
-                final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
-                distributionsFound.add(Distribution.fromText(api_parameter));
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject distributionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
+                    distributionsFound.add(Distribution.fromText(api_parameter));
+                }
             }
         }
         return distributionsFound;
     }
     public final CompletableFuture<List<Distribution>> getDistributionsAsync() {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.DISTRIBUTIONS_PATH);
         String query = queryBuilder.toString();
         return Helper.getAsync(query).thenApply(bodyText -> {
             List<Distribution> distributionsFound = new LinkedList<>();
             Gson               gson               = new Gson();
             JsonElement        element            = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject distributionJsonObj = jsonArray.get(i).getAsJsonObject();
-                    final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
-                    distributionsFound.add(Distribution.fromText(api_parameter));
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject distributionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
+                        distributionsFound.add(Distribution.fromText(api_parameter));
+                    }
                 }
             }
             return distributionsFound;
@@ -981,7 +1026,7 @@ public class DiscoClient {
 
 
     public final List<Distribution> getDistributionsForSemVer(final SemVer semVer) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.DISTRIBUTIONS_PATH)
                                                         .append("/versions/")
                                                         .append(semVer.toString());
@@ -992,18 +1037,21 @@ public class DiscoClient {
 
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject distributionJsonObj = jsonArray.get(i).getAsJsonObject();
-                final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
-                distributionsFound.add(Distribution.fromText(api_parameter));
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject distributionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
+                    distributionsFound.add(Distribution.fromText(api_parameter));
+                }
             }
         }
         return distributionsFound;
     }
     public final CompletableFuture<List<Distribution>> getDistributionsForSemVerAsync(final SemVer semVer) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.DISTRIBUTIONS_PATH)
                                                         .append("/versions/")
                                                         .append(semVer.toString());
@@ -1013,12 +1061,15 @@ public class DiscoClient {
             List<Distribution> distributionsFound = new LinkedList<>();
             Gson               gson               = new Gson();
             JsonElement        element            = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject distributionJsonObj = jsonArray.get(i).getAsJsonObject();
-                    final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
-                    distributionsFound.add(Distribution.fromText(api_parameter));
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject distributionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
+                        distributionsFound.add(Distribution.fromText(api_parameter));
+                    }
                 }
             }
             return distributionsFound;
@@ -1027,7 +1078,7 @@ public class DiscoClient {
 
 
     public final List<Distribution> getDistributionsForVersion(final VersionNumber versionNumber) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.DISTRIBUTIONS_PATH)
                                                         .append("/versions/")
                                                         .append(versionNumber.toString());
@@ -1038,18 +1089,21 @@ public class DiscoClient {
 
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                JsonObject distributionJsonObj = jsonArray.get(i).getAsJsonObject();
-                final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
-                distributionsFound.add(Distribution.fromText(api_parameter));
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    JsonObject distributionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                    final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
+                    distributionsFound.add(Distribution.fromText(api_parameter));
+                }
             }
         }
         return distributionsFound;
     }
     public final CompletableFuture<List<Distribution>> getDistributionsForVersionAsync(final VersionNumber versionNumber) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.DISTRIBUTIONS_PATH)
                                                         .append("/versions/")
                                                         .append(versionNumber.toString());
@@ -1059,12 +1113,15 @@ public class DiscoClient {
             List<Distribution> distributionsFound = new LinkedList<>();
             Gson               gson               = new Gson();
             JsonElement        element            = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    JsonObject distributionJsonObj = jsonArray.get(i).getAsJsonObject();
-                    final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
-                    distributionsFound.add(Distribution.fromText(api_parameter));
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        JsonObject distributionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        final String api_parameter = distributionJsonObj.get("api_parameter").getAsString();
+                        distributionsFound.add(Distribution.fromText(api_parameter));
+                    }
                 }
             }
             return distributionsFound;
@@ -1073,7 +1130,7 @@ public class DiscoClient {
 
 
     public static Map<Distribution, List<VersionNumber>> getVersionsPerDistribution() {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.DISTRIBUTIONS_PATH);
 
         String                                 query              = queryBuilder.toString();
@@ -1081,36 +1138,12 @@ public class DiscoClient {
         Map<Distribution, List<VersionNumber>> distributionsFound = new LinkedHashMap<>();
         Gson        gson     = new Gson();
         JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-        if (element instanceof JsonArray) {
-            JsonArray jsonArray = element.getAsJsonArray();
-            for (int i = 0; i < jsonArray.size(); i++) {
-                final JsonObject          distributionJsonObj = jsonArray.get(i).getAsJsonObject();
-                final String              api_parameter       = distributionJsonObj.get("api_parameter").getAsString();
-                final Distribution        distribution        = Distribution.fromText(api_parameter);
-                final List<VersionNumber> versions            = new LinkedList<>();
-                final JsonArray           versionsArray       = distributionJsonObj.get("versions").getAsJsonArray();
-                for (int j = 0 ; j < versionsArray.size() ; j++) {
-                    VersionNumber versionNumber = VersionNumber.fromText(versionsArray.get(j).getAsString());
-                    versions.add(versionNumber);
-                }
-                distributionsFound.put(distribution, versions);
-            }
-        }
-        return distributionsFound;
-    }
-    public static CompletableFuture<Map<Distribution, List<VersionNumber>>> getVersionsPerDistributionAsync() {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
-                                                        .append(Constants.DISTRIBUTIONS_PATH);
-
-        String query = queryBuilder.toString();
-        return Helper.getAsync(query).thenApply(bodyText -> {
-            Map<Distribution, List<VersionNumber>> distributionsFound = new LinkedHashMap<>();
-            Gson        gson     = new Gson();
-            JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
-            if (element instanceof JsonArray) {
-                JsonArray jsonArray = element.getAsJsonArray();
-                for (int i = 0; i < jsonArray.size(); i++) {
-                    final JsonObject          distributionJsonObj = jsonArray.get(i).getAsJsonObject();
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    final JsonObject          distributionJsonObj = resultJsonArray.get(i).getAsJsonObject();
                     final String              api_parameter       = distributionJsonObj.get("api_parameter").getAsString();
                     final Distribution        distribution        = Distribution.fromText(api_parameter);
                     final List<VersionNumber> versions            = new LinkedList<>();
@@ -1120,6 +1153,36 @@ public class DiscoClient {
                         versions.add(versionNumber);
                     }
                     distributionsFound.put(distribution, versions);
+                }
+            }
+        }
+        return distributionsFound;
+    }
+    public static CompletableFuture<Map<Distribution, List<VersionNumber>>> getVersionsPerDistributionAsync() {
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
+                                                        .append(Constants.DISTRIBUTIONS_PATH);
+
+        String query = queryBuilder.toString();
+        return Helper.getAsync(query).thenApply(bodyText -> {
+            Map<Distribution, List<VersionNumber>> distributionsFound = new LinkedHashMap<>();
+            Gson        gson     = new Gson();
+            JsonElement element  = gson.fromJson(bodyText, JsonElement.class);
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        final JsonObject          distributionJsonObj = resultJsonArray.get(i).getAsJsonObject();
+                        final String              api_parameter       = distributionJsonObj.get("api_parameter").getAsString();
+                        final Distribution        distribution        = Distribution.fromText(api_parameter);
+                        final List<VersionNumber> versions            = new LinkedList<>();
+                        final JsonArray           versionsArray       = distributionJsonObj.get("versions").getAsJsonArray();
+                        for (int j = 0 ; j < versionsArray.size() ; j++) {
+                            VersionNumber versionNumber = VersionNumber.fromText(versionsArray.get(j).getAsString());
+                            versions.add(versionNumber);
+                        }
+                        distributionsFound.put(distribution, versions);
+                    }
                 }
             }
             return distributionsFound;
@@ -1146,7 +1209,7 @@ public class DiscoClient {
 
 
     public PkgInfo getPkgInfo(final String ephemeralId, final SemVer javaVersion) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.EPHEMERAL_IDS_PATH)
                                                         .append("/")
                                                         .append(ephemeralId);
@@ -1154,33 +1217,44 @@ public class DiscoClient {
         String query           = queryBuilder.toString();
         String packageInfoBody = Helper.get(query);
 
-        Gson        packageInfoGson    = new Gson();
-        JsonElement packageInfoElement = packageInfoGson.fromJson(packageInfoBody, JsonElement.class);
-        if (packageInfoElement instanceof JsonObject) {
-            final JsonObject packageInfoJson   = packageInfoElement.getAsJsonObject();
-            final String     filename          = packageInfoJson.get(PkgInfo.FIELD_FILENAME).getAsString();
-            final String     directDownloadUri = packageInfoJson.get(PkgInfo.FIELD_DIRECT_DOWNLOAD_URI).getAsString();
-            final String     downloadSiteUri   = packageInfoJson.get(PkgInfo.FIELD_DOWNLOAD_SITE_URI).getAsString();
-            return new PkgInfo(filename, javaVersion, directDownloadUri, downloadSiteUri);
+        Gson        gson    = new Gson();
+        JsonElement element = gson.fromJson(packageInfoBody, JsonElement.class);
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    final JsonObject packageInfoJson   = resultJsonArray.get(i).getAsJsonObject();
+                    final String     filename          = packageInfoJson.get(PkgInfo.FIELD_FILENAME).getAsString();
+                    final String     directDownloadUri = packageInfoJson.get(PkgInfo.FIELD_DIRECT_DOWNLOAD_URI).getAsString();
+                    final String     downloadSiteUri   = packageInfoJson.get(PkgInfo.FIELD_DOWNLOAD_SITE_URI).getAsString();
+                    return new PkgInfo(filename, javaVersion, directDownloadUri, downloadSiteUri);
+                }
+            }
         }
-
         return null;
     }
     public CompletableFuture<PkgInfo> getPkgInfoAsync(final String ephemeralId, final SemVer javaVersion) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.EPHEMERAL_IDS_PATH)
                                                         .append("/")
                                                         .append(ephemeralId);
         String query           = queryBuilder.toString();
         return Helper.getAsync(query).thenApply(packageInfoBody -> {
-            Gson        packageInfoGson    = new Gson();
-            JsonElement packageInfoElement = packageInfoGson.fromJson(packageInfoBody, JsonElement.class);
-            if (packageInfoElement instanceof JsonObject) {
-                final JsonObject packageInfoJson   = packageInfoElement.getAsJsonObject();
-                final String     filename          = packageInfoJson.get(PkgInfo.FIELD_FILENAME).getAsString();
-                final String     directDownloadUri = packageInfoJson.get(PkgInfo.FIELD_DIRECT_DOWNLOAD_URI).getAsString();
-                final String     downloadSiteUri   = packageInfoJson.get(PkgInfo.FIELD_DOWNLOAD_SITE_URI).getAsString();
-                return new PkgInfo(filename, javaVersion, directDownloadUri, downloadSiteUri);
+            Gson        gson    = new Gson();
+            JsonElement element = gson.fromJson(packageInfoBody, JsonElement.class);
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        final JsonObject packageInfoJson   = resultJsonArray.get(i).getAsJsonObject();
+                        final String     filename          = packageInfoJson.get(PkgInfo.FIELD_FILENAME).getAsString();
+                        final String     directDownloadUri = packageInfoJson.get(PkgInfo.FIELD_DIRECT_DOWNLOAD_URI).getAsString();
+                        final String     downloadSiteUri   = packageInfoJson.get(PkgInfo.FIELD_DOWNLOAD_SITE_URI).getAsString();
+                        return new PkgInfo(filename, javaVersion, directDownloadUri, downloadSiteUri);
+                    }
+                }
             }
             return null;
         });
@@ -1216,7 +1290,7 @@ public class DiscoClient {
 
     public Pkg getPkg(final String pkgId) {
         if (cacheReady.get()) { return pkgCache.stream().filter(pkg -> pkg.getId().equals(pkgId)).findFirst().orElse(null); }
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.PACKAGES_PATH)
                                                         .append("/")
                                                         .append(pkgId);
@@ -1224,16 +1298,22 @@ public class DiscoClient {
         String query    = queryBuilder.toString();
         String bodyText = Helper.get(query);
 
-        Gson        pkgGson    = new Gson();
-        JsonElement pkgElement = pkgGson.fromJson(bodyText, JsonElement.class);
-        if (pkgElement instanceof JsonObject) {
-            return new Pkg(pkgElement.getAsJsonObject().toString());
-        } else {
-            return null;
+        Gson        gson    = new Gson();
+        JsonElement element = gson.fromJson(bodyText, JsonElement.class);
+        if (element instanceof JsonObject) {
+            JsonObject resultJsonObj = element.getAsJsonObject();
+            if (resultJsonObj.has(RESPONSE_RESULT)) {
+                JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                    final JsonObject pkgJson = resultJsonArray.get(i).getAsJsonObject();
+                    return new Pkg(pkgJson.toString());
+                }
+            }
         }
+        return null;
     }
     public CompletableFuture<Pkg> getPkgAsync(final String pkgId) {
-        StringBuilder queryBuilder = new StringBuilder().append(PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL))
+        StringBuilder queryBuilder = new StringBuilder().append(getDiscoApiUrl())
                                                         .append(Constants.PACKAGES_PATH)
                                                         .append("/")
                                                         .append(pkgId);
@@ -1244,13 +1324,19 @@ public class DiscoClient {
             return future;
         }
         return Helper.getAsync(query).thenApply(bodyText -> {
-            Gson        pkgGson    = new Gson();
-            JsonElement pkgElement = pkgGson.fromJson(bodyText, JsonElement.class);
-            if (pkgElement instanceof JsonObject) {
-                return new Pkg(pkgElement.getAsJsonObject().toString());
-            } else {
-                return null;
+            Gson        gson    = new Gson();
+            JsonElement element = gson.fromJson(bodyText, JsonElement.class);
+            if (element instanceof JsonObject) {
+                JsonObject resultJsonObj = element.getAsJsonObject();
+                if (resultJsonObj.has(RESPONSE_RESULT)) {
+                    JsonArray resultJsonArray = resultJsonObj.getAsJsonArray(RESPONSE_RESULT);
+                    for (int i = 0 ; i < resultJsonArray.size() ; i++) {
+                        final JsonObject pkgJson = resultJsonArray.get(i).getAsJsonObject();
+                        return new Pkg(pkgJson.toString());
+                    }
+                }
             }
+            return null;
         });
     }
 
@@ -1307,6 +1393,15 @@ public class DiscoClient {
                 return false;
             }
         });
+    }
+
+    private static final String getDiscoApiUrl() {
+        try {
+            final String url = PropertyManager.INSTANCE.getString(Constants.PROPERTY_KEY_DISCO_URL);
+            return null == url ? Constants.DISCO_API_BASE_URL : url;
+        } catch (Exception e) {
+            return Constants.DISCO_API_BASE_URL;
+        }
     }
 
 

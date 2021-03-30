@@ -70,6 +70,9 @@ public class Constants {
     public static final String  NEW_LINE                  = "\n";
     public static final String  COMMA_NEW_LINE            = ",\n";
 
+    public static final String  RESPONSE_RESULT           = "result";
+    public static final String  RESPONSE_MESSAGE          = "message";
+
     public static final ConcurrentHashMap<Distribution, List<Scope>> SCOPE_LOOKUP = new ConcurrentHashMap<>() {{
         put(Distribution.AOJ, List.of(Scope.PUBLIC, Scope.BUILD_OF_OPEN_JDK, Scope.DIRECTLY_DOWNLOADABLE));
         put(Distribution.AOJ_OPENJ9, List.of(Scope.PUBLIC, Scope.DIRECTLY_DOWNLOADABLE));
